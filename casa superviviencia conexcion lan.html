@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Casa Supervivencia 3D — Vista real y primera persona</title>
+<style>
+:root{--bg:#0a1018;--panel:rgba(15,22,32,.92);--line:#3b4b62;--txt:#edf4ff;--muted:#9eacc0;--good:#54d38a;--warn:#ffd166;--bad:#ff6b6b;--accent:#5caeff}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--txt)}#stage{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none;cursor:grab}#stage:active{cursor:grabbing}
+#hud{position:fixed;left:12px;top:12px;z-index:10;display:flex;gap:10px;align-items:flex-start;max-width:calc(100vw - 24px);pointer-events:none}.panel{pointer-events:auto;background:var(--panel);border:1px solid #42516a;border-radius:14px;box-shadow:0 10px 36px rgba(0,0,0,.34);backdrop-filter:blur(8px);padding:10px}.left{width:350px}.right{width:300px;margin-left:auto}.title{font-size:17px;font-weight:850}.sub{margin-top:2px;font-size:11px;color:var(--muted)}.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.row button,.row select{border:1px solid #455976;border-radius:8px;background:#1b2638;color:var(--txt);padding:7px 9px;cursor:pointer}.row button:hover,.row select:hover{background:#243249}.row button.primary{background:#285f94;border-color:#4e9be3}.row button.danger{background:#6f3038;border-color:#a64d58}.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.stat{background:rgba(8,13,21,.62);border:1px solid #29364b;border-radius:8px;padding:7px}.label{font-size:10px;color:var(--muted)}.value{font-size:14px;font-weight:800;margin-top:2px}.bar{height:7px;background:#232e40;border-radius:999px;overflow:hidden;margin-top:5px}.fill{height:100%;width:0;background:var(--good);transition:width .1s}.small{font-size:10px;color:var(--muted);margin-top:7px}.message{margin-top:8px;min-height:32px;font-size:11px;color:#d9e6f7}.legend{font-size:11px;color:#c6d2e2;line-height:1.45}.key{padding:1px 5px;border:1px solid #51627e;border-radius:4px;background:#101827}.mode{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:12;background:rgba(15,22,32,.86);border:1px solid #49627f;border-radius:999px;padding:6px 12px;font-weight:800;font-size:12px;pointer-events:none}.crosshair{position:fixed;left:50%;top:50%;width:28px;height:28px;transform:translate(-50%,-50%);z-index:11;display:none;pointer-events:none}.crosshair span,.crosshair b{position:absolute;background:white;box-shadow:0 0 5px #000}.crosshair span{left:13px;top:2px;width:2px;height:24px}.crosshair b{left:2px;top:13px;width:24px;height:2px}.fpHint{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:11;display:none;background:rgba(7,11,18,.76);border:1px solid rgba(200,220,245,.25);border-radius:999px;padding:7px 12px;font-size:11px;pointer-events:none}.toast{position:fixed;left:50%;bottom:56px;transform:translateX(-50%);z-index:15;opacity:0;transition:.2s;background:rgba(8,13,21,.96);border:1px solid #50627e;border-radius:10px;padding:9px 14px;font-size:12px;max-width:80vw;text-align:center;pointer-events:none}.mini{margin-top:6px;font-size:10px;color:#a7b8ce}.dangerText{color:#ff9b9b}.goodText{color:#6fe4a0}@media(max-width:1000px){.left{width:315px}.right{display:none}}@media(max-width:650px){.left{width:min(350px,calc(100vw - 24px));max-height:92vh;overflow:auto}.row button,.row select{padding:6px 7px}}
+
+
+#roomPinOverlay{position:fixed;left:50%;top:22px;transform:translateX(-50%);z-index:40;display:none;min-width:290px;padding:12px 18px 14px;border-radius:16px;border:2px solid rgba(92,174,255,.72);background:rgba(8,15,25,.94);box-shadow:0 14px 45px rgba(0,0,0,.42),0 0 30px rgba(92,174,255,.16);text-align:center;backdrop-filter:blur(10px);pointer-events:auto}
+#roomPinOverlay .rpoTitle{font-size:11px;letter-spacing:1.8px;color:#a9bfd9;font-weight:900}
+#roomPinOverlay .rpoPin{margin-top:3px;font-size:44px;line-height:1;font-weight:1000;letter-spacing:10px;color:#fff;text-shadow:0 0 18px rgba(92,174,255,.32)}
+#roomPinOverlay .rpoHint{margin-top:6px;font-size:10px;color:#b7c7d9}
+#roomPinOverlay .rpoCopy{margin-top:8px;border:1px solid #4e9be3;border-radius:9px;background:#285f94;color:#fff;padding:7px 12px;font-weight:800;cursor:pointer}
+#roomPinOverlay .rpoCopy:hover{background:#3275b3}
+@media(max-width:650px){#roomPinOverlay{top:10px;min-width:230px;padding:10px 12px}.rpoPin{font-size:34px!important;letter-spacing:7px!important}}
+
+#multiplayer{position:fixed;right:12px;bottom:12px;z-index:20;width:340px}.mpTitle{font-size:14px;font-weight:850}.mpInput{width:100%;padding:8px 9px;border-radius:8px;border:1px solid #455976;background:#101827;color:#edf4ff;margin-top:6px}.mpPin{font-size:30px;font-weight:950;letter-spacing:7px;text-align:center;background:#101827;border:1px solid #455976;border-radius:10px;padding:8px;margin-top:7px}.mpStatus{font-size:11px;color:#b9c7d9;line-height:1.4;margin-top:7px}.mpPlayers{max-height:100px;overflow:auto;margin-top:7px;font-size:11px;color:#dbe8f8}.mpActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.mpActions button{border:1px solid #455976;border-radius:8px;background:#1b2638;color:#edf4ff;padding:7px 9px;cursor:pointer}.mpActions button.primary{background:#285f94;border-color:#4e9be3}.mpActions button.danger{background:#6f3038;border-color:#a64d58}.mpJoinRow{display:flex;gap:6px;margin-top:6px}.mpJoinRow input{flex:1}.mpOnline{display:inline-flex;align-items:center;gap:5px}.mpDot{width:8px;height:8px;border-radius:50%;background:#778}.mpDot.on{background:#54d38a;box-shadow:0 0 8px #54d38a}@media(max-width:1000px){#multiplayer{width:315px}}@media(max-width:650px){#multiplayer{left:12px;right:12px;bottom:8px;width:auto}}
+</style>
+</head>
+<body>
+<canvas id="stage" tabindex="0"></canvas>
+<div class="mode" id="mode">OBSERVADOR 3D</div>
+<div class="crosshair" id="crosshair"><span></span><b></b></div>
+<div class="fpHint" id="fpHint">Haz clic en la escena para capturar el mouse · WASD mover · Shift correr · E refugio · Esc salir</div>
+<div class="toast" id="toast"></div>
+<div id="roomPinOverlay" aria-live="polite">
+  <div class="rpoTitle">PIN DE JUEGO</div>
+  <div id="roomPinOverlayNumber" class="rpoPin">------</div>
+  <div class="rpoHint">Comparte este código para que otros jugadores se unan.</div>
+  <button id="roomPinOverlayCopy" class="rpoCopy">📋 Copiar PIN</button>
+</div>
+
+<div id="multiplayer" class="panel">
+  <div class="mpTitle">🎮 Multijugador directo</div>
+  <div class="mpStatus"><span class="mpOnline"><span id="mpDot" class="mpDot"></span><span id="mpConn">WebRTC · sin conexión</span></span></div>
+  <input id="mpName" class="mpInput" maxlength="18" placeholder="Tu nombre">
+  <div class="mpActions"><button id="mpHostBtn" class="primary">🎮 Crear sala</button><button id="mpCopyBtn" style="display:none">📋 Copiar PIN</button><button id="mpLeaveBtn" class="danger" style="display:none">Salir</button></div>
+  <div id="mpHostBox" style="display:none">
+    <div class="label" style="margin-top:8px">PIN DE LA PARTIDA</div>
+    <div id="mpPin" class="mpPin">------</div>
+    <div id="mpLan" class="mpStatus">Conexión directa entre navegadores. No se usa servidor de juego.</div>
+    <div class="label" style="margin-top:8px">1. Envía este código al jugador</div>
+    <textarea id="mpSignalOut" class="mpInput" rows="4" readonly placeholder="Aquí aparecerá el código de conexión..."></textarea>
+    <button id="mpCopySignal" type="button">📋 Copiar código</button>
+    <div class="label" style="margin-top:8px">2. Pega aquí la respuesta del jugador</div>
+    <textarea id="mpSignalIn" class="mpInput" rows="4" placeholder="Pega aquí la respuesta..."></textarea>
+    <button id="mpAcceptAnswer" type="button" class="primary">🔗 Conectar jugador</button>
+    <button id="mpNewOffer" type="button">➕ Conectar otro jugador</button>
+  </div>
+  <div id="mpJoinBox">
+    <div class="mpJoinRow"><input id="mpPinInput" class="mpInput" maxlength="6" inputmode="numeric" placeholder="PIN de 6 dígitos"><button id="mpJoinBtn" class="primary">Unirse</button></div>
+    <div id="mpGuestBox" style="display:none">
+      <div class="label" style="margin-top:8px">Código del host</div>
+      <textarea id="mpSignalInGuest" class="mpInput" rows="4" placeholder="Pega aquí el código que te envió el host"></textarea>
+      <button id="mpCreateAnswer" type="button" class="primary">🔗 Crear respuesta</button>
+      <div class="label" style="margin-top:8px">Envía esta respuesta al host</div>
+      <textarea id="mpSignalOutGuest" class="mpInput" rows="4" readonly></textarea>
+      <button id="mpCopySignalGuest" type="button">📋 Copiar respuesta</button>
+    </div>
+  </div>
+  <div id="mpPlayers" class="mpPlayers">Nadie conectado todavía.</div>
+</div>
+
+<div id="hud">
+  <div class="panel left">
+    <div class="title">🏠 Casa Supervivencia — 3D real</div>
+    <div class="sub">Misma estética 3D del modelo original: luces, materiales, sombras, interior y persianas hidráulicas.</div>
+    <div class="row">
+      <select id="mapSelect"><option value="house">Casa y barrio</option><option value="coast">Costa</option><option value="mountain">Montaña</option><option value="city">Ciudad</option></select>
+      <select id="disasterSelect"><option value="earthquake">Terremoto</option><option value="storm">Tormenta severa</option><option value="tornado">Tornado</option><option value="flood">Inundación</option><option value="wildfire">Incendio</option><option value="landslide">Derrumbe</option><option value="hail">Granizo</option><option value="tsunami">Tsunami</option></select>
+    </div>
+    <div class="row">
+      <button id="observeBtn">Observador</button><button id="playBtn" class="primary">Ser persona</button><button id="eyeBtn">Vista: ojos</button><button id="startBtn">▶ Iniciar</button>
+    </div>
+    <div class="row">
+      <button id="closeShutter">⬇️ Persianas</button><button id="openShutter">⬆️ Abrir</button><button id="randomBtn">🎲 Aleatorio</button><button id="extremeBtn">⚠️ Extremo</button>
+    </div>
+    <div class="row"><button id="resetBtn">↻ Reiniciar</button><button id="peopleBtn">🧍 Personas: IA</button></div>
+    <div class="grid">
+      <div class="stat"><div class="label">Desastre</div><div class="value" id="disasterName">Calma</div></div>
+      <div class="stat"><div class="label">Tiempo</div><div class="value" id="timeVal">0.0 s</div></div>
+      <div class="stat"><div class="label">Personas vivas</div><div class="value" id="aliveVal">0</div></div>
+      <div class="stat"><div class="label">Muertes</div><div class="value" id="deadVal">0</div></div>
+    </div>
+    <div class="stat" style="margin-top:6px"><div class="label">Integridad de la casa</div><div class="bar"><div id="houseFill" class="fill"></div></div><div id="houseVal" class="value">100%</div></div>
+    <div class="stat" id="playerPanel" style="margin-top:6px;display:none">
+      <div class="label">TU PERSONA</div><div class="value" id="playerName">Persona</div>
+      <div class="label" style="margin-top:5px">Salud</div><div class="bar"><div id="healthFill" class="fill"></div></div><div id="healthVal" class="value">100%</div>
+      <div class="label" style="margin-top:5px">Energía</div><div class="bar"><div id="energyFill" class="fill"></div></div><div id="energyVal" class="value">100%</div>
+      <div class="mini" id="playerState">Buscando refugio</div>
+    </div>
+    <div class="message" id="message">Carga el mapa y observa la casa en 3D.</div>
+    <div class="small" id="mapInfo">Barrio residencial con casa, calles y refugio vecinal.</div>
+  </div>
+  <div class="panel right">
+    <div class="title">Controles 3D</div>
+    <div class="legend"><b>Observador:</b> arrastra con el mouse para orbitar · rueda para zoom.<br><br><b>Ser persona:</b> <span class="key">WASD</span> mover · <span class="key">Shift</span> correr · mouse mirar · <span class="key">E</span> refugiarse/recuperarse · <span class="key">V</span> cambiar vista.</div>
+    <div class="stat" style="margin-top:8px"><div class="label">Persianas hidráulicas</div><div class="mini">Descienden de arriba hacia abajo y los cilindros/pistones se extienden con ellas.</div></div>
+    <div class="stat" style="margin-top:6px"><div class="label">Supervivencia</div><div class="mini">Las personas huyen de los peligros, buscan refugios y pueden quedar heridas o morir si su salud llega a 0.</div></div>
+    <div class="stat" style="margin-top:6px"><div class="label">Mapas</div><div class="mini">Casa y barrio · Costa · Montaña · Ciudad</div></div>
+    <div class="stat" style="margin-top:6px"><div class="label">Desastres</div><div class="mini">Terremoto · tormenta · tornado · inundación · incendio · derrumbe · granizo · tsunami</div></div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+
+const $=id=>document.getElementById(id);
+const canvas=$('stage');
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xbfcbd6);
+scene.fog=new THREE.Fog(0xbfcbd6,28,80);
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.08,180);
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+
+const hemi=new THREE.HemisphereLight(0xeaf4ff,0x62584d,2.1);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff0d5,3.2);sun.position.set(-12,18,14);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-35;sun.shadow.camera.right=35;sun.shadow.camera.top=30;sun.shadow.camera.bottom=-30;scene.add(sun);
+const moon=new THREE.DirectionalLight(0xa6b8ff,.25);moon.position.set(12,10,-16);scene.add(moon);
+
+const materials={
+  grass:new THREE.MeshStandardMaterial({color:0x6f8862,roughness:1}),
+  grass2:new THREE.MeshStandardMaterial({color:0x7f966c,roughness:1}),
+  wall:new THREE.MeshStandardMaterial({color:0xe8e2d6,roughness:.9}),
+  concrete:new THREE.MeshStandardMaterial({color:0xa7a9a6,roughness:.95}),
+  wood:new THREE.MeshStandardMaterial({color:0x8a5a35,roughness:.72}),
+  dark:new THREE.MeshStandardMaterial({color:0x252b30,roughness:.35,metalness:.25}),
+  roof:new THREE.MeshStandardMaterial({color:0x4b5157,roughness:.82}),
+  glass:new THREE.MeshPhysicalMaterial({color:0x8fc6df,roughness:.12,metalness:.05,transmission:.22,transparent:true,opacity:.48}),
+  pistonMetal:new THREE.MeshStandardMaterial({color:0xb9c2c8,roughness:.2,metalness:.85}),
+  pistonBlack:new THREE.MeshStandardMaterial({color:0x30343a,roughness:.35,metalness:.7}),
+  road:new THREE.MeshStandardMaterial({color:0x59616a,roughness:.98}),
+  road2:new THREE.MeshStandardMaterial({color:0x6d747b,roughness:.98}),
+  safe:new THREE.MeshStandardMaterial({color:0x3d9460,roughness:.7}),
+  skin:new THREE.MeshStandardMaterial({color:0xe0ad82,roughness:.78}),
+  pants:new THREE.MeshStandardMaterial({color:0x343b46,roughness:.86}),
+  shirt:[0xf2b943,0x5da9e9,0xe86d87,0x69c27d,0xbc8cff,0xf59e4a].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.8})),
+  metal:new THREE.MeshStandardMaterial({color:0x697985,roughness:.28,metalness:.8}),
+  debris:new THREE.MeshStandardMaterial({color:0x716d66,roughness:.95}),
+};
+
+const world=new THREE.Group();scene.add(world);
+const houseGroup=new THREE.Group();world.add(houseGroup);
+const peopleGroup=new THREE.Group();world.add(peopleGroup);
+const effectGroup=new THREE.Group();world.add(effectGroup);
+const debrisGroup=new THREE.Group();world.add(debrisGroup);
+
+const MAPS={
+  house:{name:'Casa y barrio',info:'Barrio residencial con calles, árboles, la casa principal y refugio vecinal.',refuges:[{x:-10,z:-7,w:4.4,d:3.2,h:1.5,name:'Centro vecinal',elev:0.3},{x:0,z:0,w:10.5,d:6.7,h:2.8,name:'Casa',elev:0.6}]},
+  coast:{name:'Costa',info:'Costa abierta: el agua llega desde el frente. La torre elevada es el refugio principal.',refuges:[{x:-10,z:-9,w:4.5,d:3.5,h:5.0,name:'Torre de evacuación',elev:5.0},{x:7,z:-8,w:5,d:3.5,h:4.0,name:'Casa elevada',elev:4.0}]},
+  mountain:{name:'Montaña',info:'Laderas y quebradas: los derrumbes bajan por las pendientes. Busca terreno alto.',refuges:[{x:-9,z:-7,w:5,d:4,h:2.3,name:'Búnker de montaña',elev:2.3},{x:7,z:-6,w:4.5,d:3.5,h:5.2,name:'Refugio alto',elev:5.2}]},
+  city:{name:'Ciudad',info:'Calles y edificios alrededor. El edificio seguro y la estación sirven como refugios.',refuges:[{x:-10,z:-7,w:5,d:4,h:6.0,name:'Edificio seguro',elev:6.0},{x:8,z:-8,w:5,d:4,h:4.0,name:'Estación',elev:4.0}]}
+};
+let mapKey='house';let map=MAPS[mapKey];
+let disaster='none',running=false,extreme=false,time=0,peopleAI=true;
+let houseIntegrity=1,waterLevel=0,fireLevel=0,windForce=0,shakeAmp=0,collapse=0;
+let shutterProgress=0,shutterTarget=0;
+let people=[];let player=null;let playerMode=false;let firstPerson=false;let gameOver=false;
+let debris=[];let hazardVisuals=[];let keys=new Set();
+
+// --------- Multijugador WebRTC directo ---------
+// No usa servidor de juego. La señalización se hace copiando/pegando códigos entre jugadores.
+const mp={role:'solo',room:null,playerIndex:null,name:'',connected:false,users:[],peers:new Map(),pendingPin:null,hostPC:null,guestPC:null,lastStateSendMs:0,
+  clientId:(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36))};
+function mpSetConn(text,on=false){$('mpConn').textContent=text;$('mpDot').classList.toggle('on',on)}
+function mpSendPeer(pc,msg){try{if(pc?.connectionState==='connected' || pc?.iceConnectionState==='connected' || pc?.iceConnectionState==='completed'){const ch=pc._mpChannel;if(ch?.readyState==='open')ch.send(JSON.stringify(msg))}}catch{}}
+function mpBroadcast(msg){for(const pc of mp.peers.values())mpSendPeer(pc,msg)}
+function genPin(){let p;do{p=String(Math.floor(100000+Math.random()*900000))}while(p===mp.room);return p}
+function mpCopyText(text){try{return navigator.clipboard?.writeText(text).then(()=>true).catch(()=>false)||Promise.resolve(false)}catch{return Promise.resolve(false)}}
+function mpCopyPin(pin){pin=String(pin||'').replace(/\D/g,'').slice(0,6);if(pin.length!==6)return Promise.resolve(false);const input=$('mpPinInput');if(input){input.value=pin;input.focus();input.select();try{if(document.execCommand('copy'))return Promise.resolve(true)}catch{}}return mpCopyText(pin)}
+function mpShowPinOverlay(pin){pin=String(pin||'').replace(/\D/g,'').slice(0,6);if(pin.length!==6)return;$('roomPinOverlayNumber').textContent=pin;$('roomPinOverlay').style.display='block'}
+function mpHidePinOverlay(){$('roomPinOverlay').style.display='none'}
+function mpRenderUsers(){const e=$('mpPlayers');if(!mp.users.length){e.textContent='Nadie conectado todavía.';return}e.innerHTML=mp.users.map(u=>`<div>• ${escapeHtml(u.name||'Jugador')} ${u.host?'👑':''}${u.index===mp.playerIndex?' · tú':''}</div>`).join('')}
+function mpUsersForHost(){return mp.users.map(u=>({name:u.name,index:u.index,host:!!u.host}))}
+function mpLocalState(){return {mapKey,disaster,running,time,houseIntegrity,waterLevel,fireLevel,windForce,shakeAmp,collapse,shutterProgress,shutterTarget,extreme,users:mpUsersForHost(),people:people.map(p=>({x:p.x,z:p.z,health:p.health,energy:p.energy,alive:p.alive,state:p.state,injured:p.injured,fear:p.fear,safe:p.safe,name:p.name}))}}
+function mpBuildState(){return mpLocalState()}
+function mpSendState(){if(mp.role==='host')mpBroadcast({type:'hostState',room:mp.room,state:mpBuildState()})}
+function mpSendOwnPlayer(){if(mp.role!=='guest'||!mp.guestPC||!player)return;mpSendPeer(mp.guestPC,{type:'playerSync',room:mp.room,playerIndex:mp.playerIndex,x:player.x,z:player.z,health:player.health,energy:player.energy,alive:player.alive,state:player.state,injured:player.injured,fear:player.fear,safe:player.safe})}
+function waitIce(pc){return new Promise(resolve=>{if(pc.iceGatheringState==='complete')return resolve();const t=setTimeout(resolve,5000);pc.addEventListener('icegatheringstatechange',()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);resolve()}})})}
+function setupDataChannel(pc,ch,isHost){pc._mpChannel=ch;ch.onopen=()=>{mp.connected=true;mpSetConn(isHost?`Host · sala ${mp.room}`:`Jugador · sala ${mp.room}`,true);if(isHost){const idx=Array.from(mp.peers.values()).indexOf(pc)+1;pc._mpIndex=idx;pc._mpClientId=null;mpSendPeer(pc,{type:'welcome',room:mp.room,playerIndex:idx,state:mpBuildState()})}else{mpSendPeer(pc,{type:'hello',name:mp.name})}};ch.onclose=()=>{if(isHost&&pc._mpIndex!=null){const u=mp.users.find(x=>x.index===pc._mpIndex);const p=people[pc._mpIndex];if(p)p.remoteControlled=false;mp.users=mp.users.filter(x=>x.index!==pc._mpIndex);mpRenderUsers();toast(`👋 ${u?.name||'Jugador'} salió`);mpBroadcast({type:'users',users:mpUsersForHost()})}if(!isHost){mp.connected=false;mpSetConn('WebRTC · desconectado',false)}};ch.onmessage=e=>{try{mpHandle(JSON.parse(e.data),pc)}catch{}};}
+function setupPeer(pc,isHost){pc.oniceconnectionstatechange=()=>{if(['failed','disconnected'].includes(pc.iceConnectionState)&&isHost){toast('⚠️ Se perdió una conexión directa')}};pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed')toast('❌ No se pudo establecer la conexión directa')};if(isHost)pc.ondatachannel=e=>setupDataChannel(pc,e.channel,isHost)}
+async function mpCreateOffer(){
+  if(mp.role!=='host')return;
+  const pc=new RTCPeerConnection({iceServers:[]});mp.peers.set(mp.peers.size+1,pc);setupPeer(pc,true);
+  setupDataChannel(pc,pc.createDataChannel('game'),true);await pc.setLocalDescription(await pc.createOffer());await waitIce(pc);
+  $('mpSignalOut').value=btoa(JSON.stringify(pc.localDescription));$('mpSignalIn').value='';toast('📨 Código generado. Envíalo al jugador.');
+}
+async function mpAcceptAnswer(){try{const raw=$('mpSignalIn').value.trim();if(!raw)throw new Error();const ans=JSON.parse(atob(raw));const pcs=[...mp.peers.values()].filter(pc=>!pc.remoteDescription);const pc=pcs[pcs.length-1];if(!pc)throw new Error();await pc.setRemoteDescription(ans);toast('🔗 Esperando conexión directa…')}catch{toast('❌ Código de respuesta inválido')}}
+async function mpCreateAnswer(){try{const raw=$('mpSignalInGuest').value.trim();if(!raw)throw new Error();const offer=JSON.parse(atob(raw));const pc=new RTCPeerConnection({iceServers:[]});mp.guestPC=pc;setupPeer(pc,false);pc.ondatachannel=e=>setupDataChannel(pc,e.channel,false);await pc.setRemoteDescription(offer);await pc.setLocalDescription(await pc.createAnswer());await waitIce(pc);$('mpSignalOutGuest').value=btoa(JSON.stringify(pc.localDescription));toast('📨 Respuesta creada. Envíala al host.')}catch{toast('❌ Código del host inválido')}}
+function mpStartHost(){if(mp.role!=='solo'){toast('Ya estás en una sala');return}mp.role='host';mp.room=genPin();mp.playerIndex=0;mp.name=mpName();mp.users=[{name:mp.name,index:0,host:true}];if(people[0]){people[0].name=mp.name;people[0].remoteControlled=false}$('mpPin').textContent=mp.room;$('mpPinInput').value=mp.room;$('mpCopyBtn').style.display='inline-block';$('mpHostBox').style.display='block';$('mpJoinBox').style.display='none';$('mpHostBtn').style.display='none';$('mpLeaveBtn').style.display='inline-block';mpShowPinOverlay(mp.room);mpSetConn(`Host · sala ${mp.room}`,true);toast(`🎮 Sala creada · PIN ${mp.room}`);mpCopyPin(mp.room);mpCreateOffer()}
+function mpStartJoin(){const pin=$('mpPinInput').value.replace(/\D/g,'').slice(0,6);if(pin.length!==6){toast('Escribe un PIN de 6 dígitos');return}if(mp.role!=='solo'){toast('Ya estás en una sala');return}mp.role='joining';mp.pendingPin=pin;mp.name=mpName();$('mpJoinBox').querySelector('.mpJoinRow').style.display='none';$('mpGuestBox').style.display='block';mpSetConn(`Preparando conexión para ${pin}…`,false);toast('Pide al host que te envíe su código de conexión')}
+function mpHandle(m,pc){
+  if(m.type==='hello'&&mp.role==='host'){let idx=pc._mpIndex;if(!idx||idx>5){mpSendPeer(pc,{type:'joinDenied',reason:'Sala llena'});return}const name=String(m.name||'Jugador').slice(0,18);const u={name,index:idx,host:false};pc._mpName=name;mp.users.push(u);const p=people[idx];if(p){p.name=name;p.remoteControlled=true;p.alive=true;p.health=100;p.energy=100}mpSendPeer(pc,{type:'welcome',room:mp.room,playerIndex:idx,state:mpBuildState()});mpBroadcast({type:'users',users:mpUsersForHost()});mpRenderUsers();toast(`👤 ${name} se conectó directamente`);return}
+  if(m.type==='welcome'&&mp.role==='joining'){mp.role='guest';mp.room=m.room;mp.playerIndex=m.playerIndex;mp.connected=true;$('mpJoinBox').style.display='none';$('mpHostBtn').style.display='none';$('mpLeaveBtn').style.display='inline-block';mpSetConn(`Jugador · sala ${m.room}`,true);toast('✅ Conectado directamente');if(m.state)mpApplyState(m.state);return}
+  if(m.type==='joinDenied'){toast('❌ '+(m.reason||'Sala llena'));return}
+  if(m.type==='users'&&mp.role==='guest'){mp.users=m.users||[];mpRenderUsers();return}
+  if(m.type==='hostState'&&mp.role==='guest'&&m.room===mp.room){mpApplyState(m.state);return}
+  if(m.type==='playerSync'&&mp.role==='host'&&m.room===mp.room){const idx=pc._mpIndex;const p=people[idx];if(p){Object.assign(p,{x:m.x,z:m.z,health:m.health,energy:m.energy,alive:m.alive,state:m.state,injured:m.injured,fear:m.fear,safe:m.safe});p.g.position.set(p.x,.1,p.z);p.g.visible=p.alive;p.remoteControlled=true}return}
+}
+function mpApplyState(st){if(!st)return;if(st.mapKey&&st.mapKey!==mapKey){mapKey=st.mapKey;map=MAPS[mapKey];$('mapSelect').value=mapKey;buildGround();updateObserverCamera()}const oldDisaster=disaster;disaster=st.disaster||'none';running=!!st.running;time=st.time||0;houseIntegrity=st.houseIntegrity??1;waterLevel=st.waterLevel||0;fireLevel=st.fireLevel||0;windForce=st.windForce||0;shakeAmp=st.shakeAmp||0;collapse=st.collapse||0;shutterProgress=st.shutterProgress||0;shutterTarget=st.shutterTarget||0;extreme=!!st.extreme;if(disaster!==oldDisaster)buildHazardVisuals();if(Array.isArray(st.people)){st.people.forEach((q,i)=>{const p=people[i];if(!p)return;Object.assign(p,{x:q.x,z:q.z,health:q.health,energy:q.energy,alive:q.alive,state:q.state,injured:q.injured,fear:q.fear,safe:q.safe,name:q.name||p.name});p.g.position.set(p.x,.1,p.z);p.g.visible=p.alive&&!((playerMode&&p===player&&firstPerson))})}if(mp.role==='guest'&&mp.playerIndex!=null&&people[mp.playerIndex]){player=people[mp.playerIndex];playerMode=false;gameOver=false}mp.users=(st.users||mp.users);if(st.users)mpRenderUsers()}
+function mpDisconnectLocal(silent=false){for(const pc of mp.peers.values())try{pc.close()}catch{}if(mp.guestPC)try{mp.guestPC.close()}catch{}mp.peers.clear();mp.guestPC=null;mpHidePinOverlay();$('mpCopyBtn').style.display='none';$('mpHostBox').style.display='none';$('mpGuestBox').style.display='none';$('mpJoinBox').style.display='block';$('mpJoinBox').querySelector('.mpJoinRow').style.display='flex';mp.room=null;mp.role='solo';mp.playerIndex=null;mp.pendingPin=null;mp.name='';mp.users=[];$('mpLeaveBtn').style.display='none';$('mpHostBtn').style.display='inline-block';mpSetConn('WebRTC · sin conexión',false);mpRenderUsers();if(!silent)toast('Sala cerrada / desconectado')}
+function mpName(){return ($('mpName').value.trim()||'Jugador').slice(0,18)}
+function escapeHtml(t){return String(t).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+$('mpHostBtn').addEventListener('click',mpStartHost);$('mpJoinBtn').addEventListener('click',mpStartJoin);$('mpLeaveBtn').addEventListener('click',()=>mpDisconnectLocal());$('mpCopyBtn').addEventListener('click',async()=>{const pin=$('mpPin').textContent.trim();const ok=await mpCopyPin(pin);toast(ok?'📋 PIN copiado':`PIN: ${pin}`)});$('roomPinOverlayCopy').addEventListener('click',async()=>{const ok=await mpCopyPin($('roomPinOverlayNumber').textContent.trim());toast(ok?'📋 PIN copiado':'Copia el PIN manualmente')});$('mpPinInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('mpJoinBtn').click()});$('mpCopySignal').addEventListener('click',async()=>toast(await mpCopyText($('mpSignalOut').value)?'📋 Código copiado':'Selecciona y copia el código'));$('mpAcceptAnswer').addEventListener('click',mpAcceptAnswer);$('mpNewOffer').addEventListener('click',mpCreateOffer);$('mpCreateAnswer').addEventListener('click',mpCreateAnswer);$('mpCopySignalGuest').addEventListener('click',async()=>toast(await mpCopyText($('mpSignalOutGuest').value)?'📋 Respuesta copiada':'Selecciona y copia la respuesta'));
+mpSetConn('WebRTC · listo para conexión directa',false);
+
+const DISASTER_NAMES={earthquake:'🌎 Terremoto',storm:'⛈️ Tormenta severa',tornado:'🌪️ Tornado',flood:'🌊 Inundación',wildfire:'🔥 Incendio',landslide:'⛰️ Derrumbe',hail:'🧊 Granizo',tsunami:'🌊 Tsunami'};
+const DISASTER_TYPES=Object.keys(DISASTER_NAMES);
+
+function toast(t){const e=$('toast');e.textContent=t;e.style.opacity='1';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.opacity='0',2200)}
+function say(t){$('message').textContent=t}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function rand(a,b){return a+Math.random()*(b-a)}
+function lerp(a,b,t){return a+(b-a)*t}
+function d2(x1,z1,x2,z2){return Math.hypot(x2-x1,z2-z1)}
+function matClone(m){return m.clone()}
+
+function box(parent,w,h,d,material,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+function cyl(parent,r,h,material,x,y,z,rot=null){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,16),material);m.position.set(x,y,z);if(rot)m.rotation.copy(rot);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+function sphere(parent,r,material,x,y,z){const m=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+
+function clearGroup(g){while(g.children.length){const c=g.children.pop();if(c.geometry)c.geometry.dispose();if(c.material){if(Array.isArray(c.material))c.material.forEach(m=>m.dispose());else if(c.material!==materials.wall&&c.material!==materials.concrete&&c.material!==materials.wood&&c.material!==materials.dark&&c.material!==materials.roof&&c.material!==materials.glass&&c.material!==materials.pistonMetal&&c.material!==materials.pistonBlack&&c.material!==materials.grass&&c.material!==materials.grass2&&c.material!==materials.road&&c.material!==materials.road2&&c.material!==materials.safe&&c.material!==materials.skin&&c.material!==materials.pants&&c.material!==materials.metal&&c.material!==materials.debris)m.dispose()}}}
+
+function buildGround(){
+  clearGroup(world);world.add(houseGroup);world.add(peopleGroup);world.add(effectGroup);world.add(debrisGroup);clearGroup(houseGroup);clearGroup(peopleGroup);clearGroup(effectGroup);clearGroup(debrisGroup);
+  box(world,38,.25,32,materials.grass,0,-.15,0);
+  // Roads / terrain per map
+  if(mapKey==='house'){
+    box(world,38,.08,3.2,materials.road,0,-.01,9.0);box(world,38,.08,3.2,materials.road,-11,-.005, -8);box(world,3.2,.08,32,materials.road2,-12,-.005,0);box(world,3.2,.08,32,materials.road2,12,-.005,0);
+  } else if(mapKey==='coast'){
+    box(world,38,.08,10, new THREE.MeshStandardMaterial({color:0x4f92bd,roughness:.5,metalness:.05}),0,-.04,10.5);
+    box(world,38,.06,2.7,materials.road,0,-.01,2.8);
+    for(let i=0;i<14;i++) sphere(world,.13+Math.random()*.18, new THREE.MeshStandardMaterial({color:0xd8c48c,roughness:1}), rand(-17,17),.08,rand(5,15));
+  } else if(mapKey==='mountain'){
+    for(let i=0;i<6;i++){const x=-15+i*6;const y=.6;const g=new THREE.Mesh(new THREE.ConeGeometry(5+Math.random()*1.8,5+Math.random()*2,5),new THREE.MeshStandardMaterial({color:i%2?0x667a60:0x7f8f6d,roughness:1}));g.position.set(x,y,rand(-1,6));g.castShadow=true;world.add(g)}
+    box(world,38,.08,2.2,materials.road,0,-.01,-8.8);
+  } else if(mapKey==='city'){
+    box(world,38,.07,3.2,materials.road,0,-.01,8.2);box(world,3.2,.07,32,materials.road,-12,-.005,0);box(world,3.2,.07,32,materials.road,12,-.005,0);
+    for(let i=0;i<20;i++){const x=rand(-17,17),z=rand(-5,6);if(Math.abs(x)<6&&Math.abs(z)<5)continue;const w=rand(2.3,4),d=rand(2.3,4),h=rand(2.2,6);const b=box(world,w,h,d,new THREE.MeshStandardMaterial({color:0x7b8893,roughness:.92}),x,h/2,z);box(world,w*.82,.12,d*.82,materials.roof,x,h+.06,z)}
+  }
+  for(let i=0;i<16;i++){const x=rand(-17,17),z=rand(-13,13);if(Math.abs(x)<7&&Math.abs(z)<5)continue;tree(world,x,z,rand(.85,1.25))}
+  buildHouse();buildRefuges();buildPeople();
+}
+
+function tree(parent,x,z,s=1){const trunk=box(parent,.34*s,1.8*s,.34*s,materials.wood,x,.9*s,z);const c=sphere(parent,1.05*s,new THREE.MeshStandardMaterial({color:0x526c47,roughness:1}),x,2.2*s,z);c.castShadow=true;return {trunk,c}}
+
+const shutters=[];const lamps=[];
+function buildHouse(){
+  clearGroup(houseGroup);shutters.length=0;lamps.length=0;
+  // Floor
+  box(houseGroup,11.7,.18,7.5,materials.wood,0,.12,0);
+  // back and side walls (front is mostly open, as in the original maqueta)
+  const parts=[box(houseGroup,12,5,.25,materials.wall,0,2.5,-4),box(houseGroup,.25,5,8,materials.wall,-6,2.5,0),box(houseGroup,.25,5,8,materials.wall,6,2.5,0)];
+  // upper roof
+  box(houseGroup,12.5,.3,8.5,materials.roof,0,5.15,0);
+  // front columns and beams
+  for(const x of [-5.7,-2.8,0,2.8,5.7]) box(houseGroup,.22,4.6,.28,materials.concrete,x,2.35,4.03);
+  box(houseGroup,12,.25,.3,materials.concrete,0,4.58,4.03);box(houseGroup,12,.22,.3,materials.concrete,0,.42,4.03);
+  // windows and doors
+  for(const x of [-2.8,2.8]){const w=2.35;const g=new THREE.Mesh(new THREE.BoxGeometry(w,3.6,.08),matClone(materials.glass));g.position.set(x,2.48,3.88);g.receiveShadow=true;houseGroup.add(g);box(houseGroup,.08,3.5,.12,materials.dark,x-w/2,2.48,3.98);box(houseGroup,.08,3.5,.12,materials.dark,x+w/2,2.48,3.98);box(houseGroup,.06,3.4,.12,materials.dark,x,2.48,3.98)}
+  box(houseGroup,1.1,2.2,.18,materials.wood,0,1.25,4.05);box(houseGroup,.85,.1,.22,materials.metal,0,2.23,4.02);
+  // interior divider and furniture
+  box(houseGroup,.18,3.5,7.3,materials.wall,0,1.95,-.05);
+  box(houseGroup,3.3,.55,1.1,materials.wood,-3.0,1.0,-1.75);box(houseGroup,1.0,.5,1.1,materials.dark,-3.0,1.52,-1.75);
+  box(houseGroup,2.2,.18,.78,materials.dark,2.7,1.45,-1.55);box(houseGroup,.15,1.8,.15,materials.wood,2.0,1.0,-1.55);box(houseGroup,.15,1.8,.15,materials.wood,3.4,1.0,-1.55);
+  box(houseGroup,2.4,.12,.8,materials.wood,-3.3,2.35,3.5);box(houseGroup,2.0,.1,.65,materials.dark,3.2,2.6,-3.8);
+  // lamps
+  const lampMat=new THREE.MeshStandardMaterial({color:0xffd58a,emissive:0xff9d36,emissiveIntensity:2.2});
+  for(const x of [-3,3]){const cable=cyl(houseGroup,.018,.8,materials.dark,x,4.32,1);const bulb=sphere(houseGroup,.15,lampMat,x,3.93,1);const light=new THREE.PointLight(0xffb45a,2.15,7);light.position.set(x,3.8,1);light.castShadow=true;houseGroup.add(light);lamps.push({cable,bulb,base:x})}
+  // shutter assemblies, each one descends from top to bottom
+  for(const x of [-2.8,2.8]) createShutter(x);
+  // mark structural meshes for reaction
+  houseGroup.traverse(o=>{if(o.isMesh)o.userData.structure=true});
+}
+
+function createShutter(x){
+  const group=new THREE.Group();group.position.set(x,0,4.28);houseGroup.add(group);
+  const slats=[];const count=12,width=2.42,slatH=.26,gap=.055;const openBase=4.17;
+  for(let i=0;i<count;i++){const s=box(group,width,slatH,.14,materials.dark,0,openBase-i*(slatH+gap),0);slats.push(s)}
+  for(const dx of [-1.16,1.16]){box(group,.1,4.3,.18,materials.dark,dx,2.1,.02)}
+  const pistons=[];
+  for(const dx of [-.84,.84]){
+    const body=cyl(group,.105,1.65,materials.pistonBlack,dx,3.25,.22);const rod=cyl(group,.054,1.0,materials.pistonMetal,dx,2.05,.22);pistons.push({body,rod});
+  }
+  shutters.push({group,slats,pistons,openBase,slatH,gap});
+}
+
+function updateShutters(dt){
+  shutterProgress+=(shutterTarget-shutterProgress)*Math.min(1,dt*3.6);
+  for(const sh of shutters){
+    sh.slats.forEach((s,i)=>{const oy=sh.openBase-i*(sh.slatH+sh.gap);const cy=oy-3.28;s.position.y=lerp(oy,cy,shutterProgress)});
+    for(const p of sh.pistons){p.rod.scale.y=1+1.85*shutterProgress;p.rod.position.y=2.05-0.93*shutterProgress}
+  }
+}
+
+function buildRefuges(){
+  for(const r of map.refuges){
+    if(r.name==='Casa') continue;
+    const g=new THREE.Group();g.position.set(r.x,r.elev/2-0.02,r.z);world.add(g);
+    box(g,r.w,r.elev,r.d,materials.safe,0,0,0);box(g,r.w*.84,.12,r.d*.84,materials.dark,0,r.elev/2+.07,0);
+    const signMat=new THREE.MeshStandardMaterial({color:0xeafff0,emissive:0x3a9d67,emissiveIntensity:.7});
+    box(g,Math.min(1.8,r.w*.42),.12,.04,signMat,0,r.elev/2+.18,r.d/2+.03);
+    r._world={x:r.x,z:r.z,w:r.w,d:r.d,h:r.elev,name:r.name};
+  }
+}
+
+function makePerson(i,p){
+  const g=new THREE.Group();g.position.set(p.x,.1,p.z);peopleGroup.add(g);p.g=g;
+  const baseShirtColor=materials.shirt[i%materials.shirt.length].color.getHex();
+  const body=new THREE.Mesh(new THREE.CapsuleGeometry(.19,.6,5,10),materials.shirt[i%materials.shirt.length].clone());body.position.y=.72;body.castShadow=true;g.add(body);p.body=body;p.baseShirtColor=baseShirtColor;
+  const head=sphere(g,.17,materials.skin,0,1.28,0);p.head=head;
+  const legL=new THREE.Mesh(new THREE.CapsuleGeometry(.055,.44,4,8),materials.pants);legL.position.set(-.1,.31,0);legL.castShadow=true;g.add(legL);const legR=legL.clone();legR.position.x=.1;g.add(legR);p.legs=[legL,legR];
+  const armL=new THREE.Mesh(new THREE.CapsuleGeometry(.05,.38,4,8),materials.skin);armL.position.set(-.27,.77,0);armL.rotation.z=-.16;armL.castShadow=true;g.add(armL);const armR=armL.clone();armR.position.x=.27;armR.rotation.z=.16;g.add(armR);p.arms=[armL,armR];
+  p.phase=rand(0,Math.PI*2);p.baseY=.1;p.alive=true;p.health=100;p.energy=100;p.state='tranquilo';p.fear=0;p.injured=false;p.speed=1.55+rand(-.25,.32);p.target=null;p.safe=0;p.deadTime=0;
+}
+
+function buildPeople(){
+  people=[];
+  const points=[[-3.6,-2],[-2.1,-1.8],[2.4,-1.8],[3.5,-1],[-2.6,1.7],[2.4,1.8]];
+  points.forEach((a,i)=>{const p={id:i,name:'Persona '+(i+1),x:a[0],z:a[1]};people.push(p);makePerson(i,p)});
+}
+
+function isHouseShelter(p){return p.x>-5.5&&p.x<5.5&&p.z>-3.5&&p.z<3.6}
+function shelterContains(p,r){return Math.abs(p.x-r.x)<r.w/2 && Math.abs(p.z-r.z)<r.d/2}
+function isShelter(p){if(isHouseShelter(p))return true;return map.refuges.some(r=>r.name!=='Casa'&&shelterContains(p,r))}
+function shelterInfo(p){if(isHouseShelter(p))return {name:'Casa',elev:.6};return map.refuges.find(r=>r.name!=='Casa'&&shelterContains(p,r))||null}
+function bestRefuge(p){let best=null,bd=1e9;for(const r of map.refuges){if(r.name==='Casa')continue;let penalty=0;if((disaster==='flood'||disaster==='tsunami')&&r.elev<3)penalty+=25;if(disaster==='wildfire'&&r.z>3)penalty+=10;const dd=d2(p.x,p.z,r.x,r.z)+penalty;if(dd<bd){bd=dd;best=r}}return best||{x:0,z:0,w:10.5,d:6.7,elev:.6,name:'Casa'} }
+
+function hazardAt(x,z){
+  let h=0;
+  if(disaster==='earthquake')h=13+7*Math.abs(Math.sin(time*4.2));
+  if(disaster==='storm')h=7+3*Math.abs(Math.sin(time*2.2));
+  if(disaster==='hail')h=8;
+  if(disaster==='tornado'){const cx=5*Math.sin(time*.35),cz=5*Math.cos(time*.4);h=clamp(26-d2(x,z,cx,cz)*4,0,26)}
+  if(disaster==='flood'){const edge=10.2-waterLevel*0.18;h=(z>edge)?16:0}
+  if(disaster==='tsunami'){const front=11-waterLevel*0.22;h=(z>front)?32:0}
+  if(disaster==='wildfire'){const cx=-12+time*1.05,cz=2.5;h=clamp(28-d2(x,z,cx,cz)*4,0,28)}
+  if(disaster==='landslide'){const low=(z>3&&x<7);h=low?18:3}
+  if(extreme)h*=1.55;
+  return h;
+}
+
+function killPerson(p,why='no sobrevivió'){
+  if(!p.alive)return;p.alive=false;p.health=0;p.state='MUERTO';p.deadTime=0;p.vx=0;p.vz=0;p.g.rotation.z=Math.PI/2;p.g.position.y=.08;if(p===player&&playerMode){gameOver=true;firstPerson=false;document.exitPointerLock?.();say('Has muerto. Reinicia para intentar sobrevivir de nuevo.');toast('☠️ Has muerto');}else toast(`${p.name} murió: ${why}.`)
+}
+
+function updateAI(p,dt,t){
+  if(!p.alive||p===player||p.remoteControlled)return;
+  if(!running){p.state='tranquilo';p.fear*=.92;return}
+  const h=hazardAt(p.x,p.z);p.fear=clamp(p.fear+(h>5?24:-11)*dt,0,100);
+  const safe=isShelter(p);
+  if(safe){p.safe=1;p.state=p.health<90?'recuperándose':'refugiado';p.energy=clamp(p.energy+16*dt,0,100);p.health=clamp(p.health+7*dt,0,100)}else p.safe=0;
+  let target=null;
+  if(h>4||p.fear>48){const r=bestRefuge(p);target={x:r.x,z:r.z};p.state='evacuando'}else{
+    p.state='moviéndose';p.walkClock=(p.walkClock||0)-dt;if(p.walkClock<=0){p.walkClock=rand(1.8,4.2);p.target={x:clamp(p.x+rand(-4,4),-16,16),z:clamp(p.z+rand(-3,3),-12,12)}}target=p.target;
+  }
+  if(target){let dx=target.x-p.x,dz=target.z-p.z,dd=Math.hypot(dx,dz)||1;const sp=p.speed*(p.fear>55?1.25:1);p.x+=dx/dd*sp*dt;p.z+=dz/dd*sp*dt;p.g.rotation.y=Math.atan2(dx,dz);p.energy=clamp(p.energy-(p.fear>55?8:3)*dt,0,100)}
+  const dmg=h*dt*(safe?.09:1);p.health-=dmg;if(p.health<55)p.injured=true;if(p.health<=0)killPerson(p,'quedó sin salud');
+  p.x=clamp(p.x,-17,17);p.z=clamp(p.z,-13,13);
+}
+
+function updatePersonAnimation(p,t){if(!p.alive)return;p.body.material.color.setHex(p.injured?0xffc857:p.baseShirtColor);const amp=(p.state==='evacuando'?0.65:.45)*Math.abs(Math.sin(t*7+p.phase));p.legs[0].rotation.x=amp; p.legs[1].rotation.x=-amp;p.arms[0].rotation.x=-amp*.65;p.arms[1].rotation.x=amp*.65;p.g.position.y=p.baseY+Math.abs(Math.sin(t*7+p.phase))*.018;if(disaster==='earthquake'){p.g.rotation.z+=Math.sin(t*15+p.phase)*.012}}
+
+function updatePlayer(dt){
+  if(!player||!player.alive||gameOver)return;
+  let ix=0,iz=0;if(keys.has('KeyW')||keys.has('ArrowUp'))iz+=1;if(keys.has('KeyS')||keys.has('ArrowDown'))iz-=1;if(keys.has('KeyA')||keys.has('ArrowLeft'))ix-=1;if(keys.has('KeyD')||keys.has('ArrowRight'))ix+=1;const len=Math.hypot(ix,iz)||1;ix/=len;iz/=len;
+  const sprint=keys.has('ShiftLeft')||keys.has('ShiftRight');const speed=player.speed*(sprint&&player.energy>0?2.15:1);const fx=Math.sin(fpYaw),fz=-Math.cos(fpYaw),rx=Math.cos(fpYaw),rz=Math.sin(fpYaw);player.x+=(fx*iz+rx*ix)*speed*dt;player.z+=(fz*iz+rz*ix)*speed*dt;player.x=clamp(player.x,-17,17);player.z=clamp(player.z,-13,13);player.g.position.set(player.x,.1,player.z);
+  const safe=isShelter(player);let dmg=hazardAt(player.x,player.z)*dt*(safe?.1:1);if(sprint)dmg*=.97;player.health-=dmg;player.energy=clamp(player.energy-(sprint?18:5)*dt,0,100);if(!running){player.energy=clamp(player.energy+8*dt,0,100);player.health=clamp(player.health+2*dt,0,100)}
+  if(safe&&keys.has('KeyE')){player.health=clamp(player.health+17*dt,0,100);player.energy=clamp(player.energy+20*dt,0,100);player.state='recuperándose en refugio'}else player.state=safe?'refugiado':'sobreviviendo';
+  if(player.health<55)player.injured=true;if(player.health<=0)killPerson(player,'tu salud llegó a cero');
+}
+
+function updateDisaster(dt,t){
+  if(!running)return;
+  time+=dt;
+  if(disaster==='earthquake'){shakeAmp=extreme?0.38:.18;houseIntegrity-=dt*(extreme?.025:.014)} else shakeAmp*=.92;
+  if(disaster==='storm'){windForce=extreme?1.5:.85;houseIntegrity-=dt*(extreme?.011:.006)}
+  if(disaster==='tornado'){windForce=extreme?2.7:1.7;houseIntegrity-=dt*(extreme?.035:.018)}
+  if(disaster==='flood'){waterLevel=clamp(waterLevel+dt*(extreme?.55:.36),0,20);houseIntegrity-=dt*(extreme?.009:.004)}
+  if(disaster==='tsunami'){waterLevel=clamp(waterLevel+dt*(extreme?.85:.55),0,36);houseIntegrity-=dt*(extreme?.028:.016)}
+  if(disaster==='wildfire'){fireLevel=clamp(fireLevel+dt*(extreme?.7:.42),0,20);houseIntegrity-=dt*(extreme?.021:.011)}
+  if(disaster==='landslide'){houseIntegrity-=dt*(extreme?.024:.012)}
+  if(disaster==='hail'){houseIntegrity-=dt*(extreme?.007:.003)}
+  houseIntegrity=clamp(houseIntegrity,0,1);
+  if(houseIntegrity<.55&&debris.length<10)spawnDebris(8);
+  if(houseIntegrity<.3&&debris.length<18)spawnDebris(10);
+  if(houseIntegrity<=0)collapse=clamp(collapse+dt*.65,0,1);
+  people.forEach(p=>updateAI(p,dt,t));
+  if(time>45||houseIntegrity<=0&&collapse>0.98){running=false;const alive=people.filter(p=>p.alive).length;if(alive===0)say('Todos murieron. Reinicia y prueba otra estrategia.');else if(houseIntegrity<=0)say(`La casa colapsó. Sobrevivieron ${alive} personas.`);else say(`El desastre terminó. Sobrevivieron ${alive} de ${people.length}.`);}
+}
+
+function spawnDebris(n){for(let i=0;i<n;i++){const m=box(debrisGroup,rand(.12,.48),rand(.12,.38),rand(.12,.48),materials.debris,rand(-5.7,5.7),rand(1,5.5),rand(-3.7,4));m.userData.vx=rand(-.8,.8);m.userData.vy=rand(-.5,.5);m.userData.vz=rand(-.8,.8);m.userData.av=rand(-4,4);debris.push(m)}}
+
+function clearHazards(){clearGroup(effectGroup);hazardVisuals=[]}
+function buildHazardVisuals(){
+  clearHazards();
+  if(disaster==='flood'||disaster==='tsunami'){const wmat=new THREE.MeshPhysicalMaterial({color:0x4a99c5,roughness:.1,metalness:.05,transparent:true,opacity:.48,transmission:.08});const water=new THREE.Mesh(new THREE.BoxGeometry(37,.2,26),wmat);water.position.set(0,-.02,8);water.receiveShadow=true;effectGroup.add(water);hazardVisuals.push({kind:'water',mesh:water})}
+  if(disaster==='tsunami'){const wm=new THREE.MeshPhysicalMaterial({color:0x6bc2e8,roughness:.28,transparent:true,opacity:.56});const wave=new THREE.Mesh(new THREE.BoxGeometry(37,5,1.4),wm);wave.position.set(0,2.5,17);effectGroup.add(wave);hazardVisuals.push({kind:'wave',mesh:wave})}
+  if(disaster==='tornado'){const coneMat=new THREE.MeshStandardMaterial({color:0x8e99a8,transparent:true,opacity:.28,roughness:1,side:THREE.DoubleSide});const cone=new THREE.Mesh(new THREE.ConeGeometry(3.8,.1,64,1,true),coneMat);cone.position.y=3.3;effectGroup.add(cone);hazardVisuals.push({kind:'tornado',mesh:cone})}
+  if(disaster==='wildfire'){
+    for(let i=0;i<20;i++){const f=sphere(effectGroup,rand(.08,.22),new THREE.MeshStandardMaterial({color:i%2?0xffa02f:0xff5930,emissive:i%2?0xff7b16:0xff3b14,emissiveIntensity:2}),rand(-11,-3),rand(.2,2.6),rand(-2.5,7));f.userData.life=rand(.4,1.3);hazardVisuals.push({kind:'fire',mesh:f,seed:Math.random()})}
+  }
+  if(disaster==='hail'){const hmat=new THREE.MeshStandardMaterial({color:0xe7f3ff,roughness:.2,metalness:.2});for(let i=0;i<60;i++){const h=sphere(effectGroup,.08,hmat,rand(-18,18),rand(2,14),rand(-13,13));h.userData.phase=Math.random()*6.28;hazardVisuals.push({kind:'hail',mesh:h})}}
+  if(disaster==='storm'||disaster==='tornado'){
+    const rainMat=new THREE.LineBasicMaterial({color:0xcfe8ff,transparent:true,opacity:.35});for(let i=0;i<70;i++){const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(rand(-18,18),rand(4,14),rand(-13,13)),new THREE.Vector3(0,0,0)]);const l=new THREE.Line(g,rainMat);effectGroup.add(l);hazardVisuals.push({kind:'rain',mesh:l})}
+  }
+}
+
+function updateHazardVisuals(dt,t){
+  if(!running)return;
+  for(const h of hazardVisuals){
+    if(h.kind==='water'){h.mesh.position.y=-.02+waterLevel*.34}
+    else if(h.kind==='wave'){h.mesh.position.z=17-waterLevel*.22;h.mesh.scale.x=1+.08*Math.sin(t*4)}
+    else if(h.kind==='tornado'){const a=t*2.4;h.mesh.position.x=5*Math.sin(t*.35);h.mesh.position.z=5*Math.cos(t*.4);h.mesh.scale.y=15;h.mesh.rotation.y=a}
+    else if(h.kind==='fire'){h.mesh.position.y+=Math.sin(t*5+h.seed*8)*dt*.32;h.mesh.position.x+=Math.sin(t*2+h.seed*7)*dt*.25;if(h.mesh.position.y>3.2)h.mesh.position.y=.25}
+    else if(h.kind==='hail'){h.mesh.position.y-=dt*(5.5+Math.sin(t*5+h.mesh.userData.phase));if(h.mesh.position.y<.1){h.mesh.position.y=rand(7,14);h.mesh.position.x=rand(-18,18);h.mesh.position.z=rand(-13,13)}}
+    else if(h.kind==='rain'){h.mesh.position.x+=Math.sin(t*1.4)*dt*.8;h.mesh.position.z+=windForce*dt*.8}
+  }
+}
+
+function reactHouse(dt,t){
+  const stress=1-houseIntegrity;
+  houseGroup.position.y=-collapse*.9;
+  houseGroup.rotation.z=(disaster==='earthquake'?Math.sin(t*11)*shakeAmp*.12*stress:Math.sin(t*2.4)*windForce*.012*stress);
+  houseGroup.rotation.x=(disaster==='earthquake'?Math.cos(t*9)*shakeAmp*.08*stress:0);
+  shutters.forEach((s,i)=>{if(disaster==='earthquake'){s.group.rotation.z=Math.sin(t*20+i)*.055*shakeAmp}s.group.rotation.y=Math.sin(t*5+i)*.025*windForce});
+  lamps.forEach((l,i)=>{const a=disaster==='earthquake'?Math.sin(t*6+i)*.22:disaster==='storm'?Math.sin(t*4+i)*.12:0;l.bulb.position.x=l.base+Math.sin(a)*.34;l.bulb.position.z=1+Math.sin(a)*.1;l.cable.position.x=l.bulb.position.x;l.cable.position.z=l.bulb.position.z;l.cable.rotation.z=a});
+}
+
+function updateDebris(dt,t){for(const d of debris){d.userData.vy-=9.8*dt;d.position.x+=d.userData.vx*dt;d.position.y+=d.userData.vy*dt;d.position.z+=d.userData.vz*dt;d.rotation.x+=d.userData.av*dt;d.rotation.z+=d.userData.av*.7*dt;if(disaster==='tornado'||disaster==='storm'){d.userData.vx+=windForce*dt*.7;d.userData.vz+=Math.sin(t+d.position.x)*dt*.4}if(d.position.y<.22){d.position.y=.22;d.userData.vy=Math.abs(d.userData.vy)*.25;d.userData.vx*=.84;d.userData.vz*=.84}}}
+
+// --------- Camera / input ---------
+let obsTheta=.62,obsPhi=1.03,obsDist=20,drag=false,lastX=0,lastY=0;
+let fpYaw=0,fpPitch=0,pointerLocked=false;
+const target=new THREE.Vector3(0,2.1,0);
+function updateObserverCamera(){const x=Math.sin(obsTheta)*Math.sin(obsPhi)*obsDist;const y=Math.cos(obsPhi)*obsDist;const z=Math.cos(obsTheta)*Math.sin(obsPhi)*obsDist;camera.position.set(target.x+x,target.y+y,target.z+z);camera.lookAt(target)}
+function updateFirstPersonCamera(){if(!player)return;camera.position.set(player.x,1.65,player.z);const cp=Math.cos(fpPitch),sp=Math.sin(fpPitch);const dir=new THREE.Vector3(Math.sin(fpYaw)*cp,sp,-Math.cos(fpYaw)*cp);camera.lookAt(camera.position.clone().add(dir))}
+updateObserverCamera();
+
+canvas.addEventListener('mousedown',e=>{if(firstPerson)return;drag=true;lastX=e.clientX;lastY=e.clientY});
+addEventListener('mouseup',()=>drag=false);
+addEventListener('mousemove',e=>{if(firstPerson&&pointerLocked){fpYaw-=e.movementX*.0027;fpPitch-=e.movementY*.0023;fpPitch=clamp(fpPitch,-1.42,1.42);return}if(!drag)return;obsTheta-= (e.clientX-lastX)*.006;obsPhi=clamp(obsPhi+(e.clientY-lastY)*.005,0.34,1.43);lastX=e.clientX;lastY=e.clientY;updateObserverCamera()});
+canvas.addEventListener('wheel',e=>{if(firstPerson)return;e.preventDefault();obsDist=clamp(obsDist*(e.deltaY<0?.92:1.09),6,42);updateObserverCamera()},{passive:false});
+canvas.addEventListener('click',()=>{if(firstPerson&&!pointerLocked)canvas.requestPointerLock?.()});
+document.addEventListener('pointerlockchange',()=>{pointerLocked=document.pointerLockElement===canvas;$('fpHint').style.display=(firstPerson&&!pointerLocked&&player?.alive)?'block':'none'});
+addEventListener('keydown',e=>{keys.add(e.code);if(e.code==='KeyV')toggleFirstPerson();if(e.code==='KeyR')reset();if(e.code==='Escape'&&firstPerson&&pointerLocked)document.exitPointerLock();});
+addEventListener('keyup',e=>keys.delete(e.code));
+
+function enterPlayer(){if(playerMode)return;const assigned=(mp.role==='guest'||mp.role==='host')&&mp.playerIndex!=null?people[mp.playerIndex]:null;const alive=assigned?.alive?assigned:people.find(p=>p.alive);if(!alive){say('No quedan personas vivas. Reinicia el mapa.');return}playerMode=true;player=alive;firstPerson=true;player.g.visible=false;fpYaw=obsTheta;fpPitch=-.04;gameOver=false;$('mode').textContent='MODO PERSONA · PRIMERA PERSONA';$('crosshair').style.display='block';say(`Ahora eres ${player.name}. Sobrevive, busca un refugio y usa las persianas cuando convenga.`);toast('👁️ Vista desde los ojos · WASD · mouse · Shift · E');$('fpHint').style.display='block';updateFirstPersonCamera()}
+function leavePlayer(){playerMode=false;firstPerson=false;if(player){player.g.visible=true;player=null}document.exitPointerLock?.();$('mode').textContent='OBSERVADOR 3D';$('crosshair').style.display='none';$('fpHint').style.display='none';say('Modo observador: gira la cámara y revisa toda la escena.');updateObserverCamera()}
+function toggleFirstPerson(){if(!playerMode){toast('Pulsa «Ser persona» primero');return}firstPerson=!firstPerson;if(firstPerson){if(player)player.g.visible=false;$('crosshair').style.display='block';$('mode').textContent='MODO PERSONA · PRIMERA PERSONA';$('fpHint').style.display='block';fpYaw=obsTheta;fpPitch=-.04;updateFirstPersonCamera()}else{if(player)player.g.visible=true;document.exitPointerLock?.();$('crosshair').style.display='none';$('fpHint').style.display='none';$('mode').textContent='MODO PERSONA · TERCERA PERSONA';}}
+
+function startDisaster(kind){if(running)return;disaster=kind;running=true;time=0;waterLevel=0;fireLevel=0;windForce=0;shakeAmp=0;collapse=0;say(`¡Comenzó ${DISASTER_NAMES[kind]}! Las personas deben sobrevivir.`);toast(`Desastre: ${DISASTER_NAMES[kind]}`);buildHazardVisuals()}
+function randomDisaster(){const k=DISASTER_TYPES[Math.floor(Math.random()*DISASTER_TYPES.length)];$('disasterSelect').value=k;startDisaster(k)}
+function reset(){disaster='none';running=false;time=0;waterLevel=0;fireLevel=0;windForce=0;shakeAmp=0;collapse=0;houseIntegrity=1;shutterProgress=0;shutterTarget=0;gameOver=false;playerMode=false;firstPerson=false;document.exitPointerLock?.();$('crosshair').style.display='none';$('fpHint').style.display='none';$('mode').textContent='OBSERVADOR 3D';buildGround();clearHazards();updateObserverCamera();say('Mapa reiniciado. Observa la casa en 3D real o pulsa «Ser persona».');updateUI()}
+
+$('mapSelect').addEventListener('change',e=>{mapKey=e.target.value;map=MAPS[mapKey];reset();if(mp.role==='host')mpSendState()});
+$('disasterSelect').addEventListener('change',e=>{if(!running)disaster=e.target.value});
+$('startBtn').addEventListener('click',()=>{startDisaster($('disasterSelect').value);if(mp.role==='host')mpSendState()});
+$('randomBtn').addEventListener('click',()=>{randomDisaster();if(mp.role==='host')mpSendState()});
+$('extremeBtn').addEventListener('click',()=>{extreme=!extreme;$('extremeBtn').textContent=extreme?'⚠️ Extremo: ON':'⚠️ Extremo';toast(extreme?'Daño extremo activado':'Daño normal')});
+$('resetBtn').addEventListener('click',()=>{reset();if(mp.role==='host')mpSendState()});$('playBtn').addEventListener('click',enterPlayer);$('observeBtn').addEventListener('click',leavePlayer);$('eyeBtn').addEventListener('click',toggleFirstPerson);
+$('closeShutter').addEventListener('click',()=>{shutterTarget=1;say('Persianas cerrándose de arriba hacia abajo; pistones extendiéndose.');if(mp.role==='host')mpSendState()});
+$('openShutter').addEventListener('click',()=>{shutterTarget=0;say('Persianas subiendo; pistones retrayéndose.');if(mp.role==='host')mpSendState()});
+$('peopleBtn').addEventListener('click',()=>{peopleAI=!peopleAI;people.forEach(p=>{p.state=peopleAI?'moviéndose':'quieto'});$('peopleBtn').textContent=peopleAI?'🧍 Personas: IA':'🧍 Personas: detener';toast(peopleAI?'IA activada':'IA detenida')});
+
+function updateUI(){const alive=people.filter(p=>p.alive).length;$('disasterName').textContent=disaster==='none'?'Calma':DISASTER_NAMES[disaster];$('timeVal').textContent=time.toFixed(1)+' s';$('aliveVal').textContent=alive;$('deadVal').textContent=people.length-alive;$('houseVal').textContent=Math.round(houseIntegrity*100)+'%';$('houseFill').style.width=(houseIntegrity*100)+'%';$('houseFill').style.background=houseIntegrity<.3?'var(--bad)':houseIntegrity<.6?'var(--warn)':'var(--good)';$('mapInfo').textContent=map.info;if(player){$('playerPanel').style.display='block';$('playerName').textContent=player.name;$('healthVal').textContent=Math.round(player.health)+'%';$('energyVal').textContent=Math.round(player.energy)+'%';$('healthFill').style.width=clamp(player.health,0,100)+'%';$('energyFill').style.width=clamp(player.energy,0,100)+'%';$('playerState').textContent=player.alive?(player.state||'sobreviviendo'):(gameOver?'MUERTO':'fuera de combate')}else $('playerPanel').style.display='none'}
+
+function animatePeople(t){for(const p of people){updatePersonAnimation(p,t)}}
+
+buildGround();buildHazardVisuals();updateUI();
+const clock=new THREE.Clock();
+function frame(){const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
+  if(running&&!gameOver&&mp.role!=='guest'){updateDisaster(dt,t)}
+  if(playerMode&&player&&player.alive&&!gameOver){updatePlayer(dt)}
+  updateShutters(dt);reactHouse(dt,t);updateHazardVisuals(dt,t);updateDebris(dt,t);animatePeople(t);
+  if(firstPerson&&player&&player.alive)updateFirstPersonCamera();else if(!playerMode)updateObserverCamera();
+  if(disaster==='earthquake'&&running&&!firstPerson){scene.position.x=Math.sin(t*37)*shakeAmp;scene.position.z=Math.cos(t*31)*shakeAmp*.7;scene.rotation.z=Math.sin(t*22)*shakeAmp*.012}else{scene.position.lerp(new THREE.Vector3(0,0,0),.16);scene.rotation.z*=.84}
+  if(mp.role==='guest')mpSendOwnPlayer();else if(mp.role==='host'&&performance.now()-mp.lastStateSendMs>100){mp.lastStateSendMs=performance.now();mpSendState()} renderer.render(scene,camera);updateUI();requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2))});
+</script>
+
+<div id="lanServerHelper" style="position:fixed;left:12px;bottom:12px;z-index:99999;
+background:rgba(0,0,0,.72);color:#fff;padding:10px 12px;border-radius:10px;
+font:13px Arial,sans-serif;backdrop-filter:blur(4px);">
+  <div style="margin-bottom:7px;">🎮 Multijugador LAN</div>
+  <button onclick="descargarServidorLAN()" style="cursor:pointer;border:0;border-radius:7px;padding:7px 10px;">
+    Guardar servidor LAN
+  </button>
+</div>
+</body>
+</html>
